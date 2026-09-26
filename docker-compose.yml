@@ -1,0 +1,138 @@
+# IntelliFood — Intelligent Food Delivery Platform
+# Docker Compose for local development and integration testing.
+#
+# IMPORTANT — Read before running:
+#
+#   1. Copy backend/.env.example to backend/.env and fill in values.
+#      The backend service reads its env from a .env file OR from the
+#      environment variables already set in your shell.
+#
+#   2. MongoDB and Redis are included so the entire stack starts with
+#      a single `docker compose up`.  For production, use managed
+#      services (MongoDB Atlas, AWS ElastiCache) and remove the mongo
+#      and redis services from this file.
+#
+#   3. This file does NOT contain real secrets.  All secrets are
+#      injected via environment variables at runtime.
+#
+# Usage:
+#   docker compose up --build          # First run — builds images
+#   docker compose up -d               # Start in background
+#   docker compose logs -f backend     # Tail backend logs
+#   docker compose down -v             # Stop and remove volumes
+
+version: '3.9'
+
+services:
+
+  # ── MongoDB ─────────────────────────────────────────────────────────────────
+  mongo:
+    image: mongo:7.0
+    container_name: intellifood-mongo
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_DATABASE: food_delivery
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - intellifood-net
+
+  # ── Redis ────────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7.2-alpine
+    container_name: intellifood-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - intellifood-net
+
+  # ── Backend (Spring Boot) ────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./food-delivery-backend
+      dockerfile: Dockerfile
+    image: intellifood-backend:latest
+    container_name: intellifood-backend
+    restart: unless-stopped
+    ports:
+      - "8082:8082"
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      # Database
+      MONGODB_URI: ${MONGODB_URI:-mongodb://mongo:27017/food_delivery}
+      # Redis
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      # Security
+      JWT_SECRET: ${JWT_SECRET}
+      SURGE_TOKEN_SECRET: ${SURGE_TOKEN_SECRET}
+      # Admin Bootstrap
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@intellifood.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      ADMIN_NAME: ${ADMIN_NAME:-System Admin}
+      # CORS — set to your frontend URL in production
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:80}
+      # Port
+      SERVER_PORT: 8082
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:8082/healthz | grep -q UP"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    networks:
+      - intellifood-net
+
+  # ── Frontend (React + Nginx) ──────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./food-delivery-frontend
+      dockerfile: Dockerfile
+      args:
+        # The frontend calls the BACKEND from the browser, so this must be the
+        # URL the browser can reach — not the Docker internal hostname.
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8082}
+        VITE_WS_URL: ${VITE_WS_URL:-http://localhost:8082/ws-tracker}
+    image: intellifood-frontend:latest
+    container_name: intellifood-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - intellifood-net
+
+# ── Networks ──────────────────────────────────────────────────────────────────
+networks:
+  intellifood-net:
+    driver: bridge
+
+# ── Volumes ───────────────────────────────────────────────────────────────────
+volumes:
+  mongo-data:
+    driver: local
+  redis-data:
+    driver: local

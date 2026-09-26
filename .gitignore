@@ -1,0 +1,35 @@
+# Dependencies & Build Outputs
+node_modules/
+**/node_modules/
+target/
+**/target/
+dist/
+**/dist/
+dist-ssr/
+*.jar
+*.war
+
+# Environment & Secret files
+.env
+**/.env
+*.local
+.env.*.local
+
+# Logs & Database Dumps
+*.log
+backend.log
+backend-err.log
+dump.rdb
+logs/
+
+# IDE & OS Files
+.idea/
+.vscode/
+*.iml
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.DS_Store
+Thumbs.db
