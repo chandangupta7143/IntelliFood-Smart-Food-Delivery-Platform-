@@ -104,6 +104,11 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public OrderResponse createOrder(CreateOrderRequest request, String email, String idempotencyKey) {
+        // Enforce Phase 8 Payment Hardening: Cash on Delivery ONLY
+        if (request.getPaymentMethod() != PaymentMethod.CASH_ON_DELIVERY) {
+            throw new IllegalArgumentException("Online payments are currently unavailable. Please select Cash on Delivery.");
+        }
+
         // 1. Check Idempotency Key
         if (idempotencyKey != null && !idempotencyKey.trim().isEmpty()) {
             Optional<Order> existingOrder = orderRepository.findByIdempotencyKey(idempotencyKey);
@@ -744,6 +749,9 @@ public class OrderServiceImpl implements OrderService {
 
                 restaurantTitle = "Ready for Pickup: #" + ordNum;
                 restaurantBody = "Order #" + ordNum + " is packed. Looking for nearby delivery partners.";
+
+                driverTitle = "New Order Assigned: #" + ordNum;
+                driverBody = "Order #" + ordNum + " from " + restName + " is ready for pickup! Delivery to: " + order.getDeliveryAddress();
                 break;
 
             case OUT_FOR_DELIVERY:
@@ -815,7 +823,7 @@ public class OrderServiceImpl implements OrderService {
                 final String fRestBody = restaurantBody;
                 final String fPriority = priority;
                 restaurantRepository.findById(order.getRestaurantId()).ifPresent(rest -> {
-                    if (rest.getOwnerId() != null && !rest.getOwnerId().equals(order.getUserId())) {
+                    if (rest.getOwnerId() != null) {
                         String eventId = order.getId() + "_" + order.getStatus() + "_rest";
                         notificationService.sendNotification(
                                 rest.getOwnerId(),

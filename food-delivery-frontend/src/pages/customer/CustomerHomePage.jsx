@@ -8,8 +8,10 @@ import RestaurantCard from '../../components/customer/RestaurantCard';
 import { RestaurantCardSkeleton } from '../../components/common/LoadingSkeleton';
 import ErrorState from '../../components/common/ErrorState';
 import { getRecommendations, trackClick } from '../../api/recommendationApi';
-import { getRestaurants } from '../../api/restaurantApi';
+import { getNearbyRestaurants } from '../../api/restaurantApi';
 import useAuthStore from '../../store/authStore';
+import useLocationStore from '../../store/locationStore';
+import { MapPin } from 'lucide-react';
 
 const QUICK_CATEGORIES = [
   { name: 'Indian', emoji: '🍛' },
@@ -23,28 +25,38 @@ const QUICK_CATEGORIES = [
 export default function CustomerHomePage() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
+  const locationStore = useLocationStore();
 
-  // Recommendations Query
+  // Recommendations Query based on selected location
   const {
     data: recommendationData,
     isLoading: isRecsLoading,
     error: recsError,
     refetch: refetchRecs,
   } = useQuery({
-    queryKey: ['recommendations'],
-    queryFn: getRecommendations,
+    queryKey: ['recommendations', locationStore.latitude, locationStore.longitude],
+    queryFn: () => getRecommendations({
+      deliveryLatitude: locationStore.latitude,
+      deliveryLongitude: locationStore.longitude,
+    }),
     staleTime: 5 * 60 * 1000,
   });
 
-  // Nearby / Popular Restaurants Query
+  // Strict Nearby Restaurants Query (only returns restaurants created within radiusKm)
   const {
     data: restaurantPage,
     isLoading: isRestaurantsLoading,
     error: restaurantsError,
     refetch: refetchRestaurants,
   } = useQuery({
-    queryKey: ['restaurants', 'home-feed'],
-    queryFn: () => getRestaurants({ page: 0, size: 8 }),
+    queryKey: ['restaurants', 'home-feed', locationStore.latitude, locationStore.longitude, locationStore.radiusKm],
+    queryFn: () => getNearbyRestaurants({
+      latitude: locationStore.latitude,
+      longitude: locationStore.longitude,
+      radiusKm: locationStore.radiusKm,
+      page: 0,
+      size: 8,
+    }),
     staleTime: 3 * 60 * 1000,
   });
 
@@ -76,22 +88,40 @@ export default function CustomerHomePage() {
     <CustomerLayout>
       <div className="space-y-10">
         {/* Hero Section */}
-        <section className="relative rounded-3xl bg-gradient-to-br from-orange-500 via-amber-500 to-orange-600 text-white p-6 sm:p-10 md:p-14 overflow-hidden shadow-xl">
+        <section className="relative rounded-3xl bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 border border-blue-900/40 text-white p-6 sm:p-10 md:p-14 overflow-hidden shadow-2xl">
+          <div className="absolute -right-20 -top-20 w-96 h-96 bg-blue-600/20 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute right-10 bottom-0 w-64 h-64 bg-cyan-500/10 rounded-full blur-2xl pointer-events-none" />
+
           <div className="relative z-10 max-w-2xl space-y-4">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-white text-xs font-bold uppercase tracking-wider">
-              <Sparkles className="w-3.5 h-3.5" />
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 border border-blue-400/30 backdrop-blur-md text-blue-200 text-xs font-bold uppercase tracking-wider">
+              <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
               Intelligent Delivery Platform
             </div>
 
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight leading-tight">
               Good food. <br className="hidden sm:inline" />
               Smart delivery. <br />
-              <span className="text-amber-100">Right to your door.</span>
+              <span className="bg-gradient-to-r from-blue-400 via-sky-300 to-cyan-300 bg-clip-text text-transparent">Right to your door.</span>
             </h1>
 
-            <p className="text-sm sm:text-base text-orange-100 font-medium max-w-lg">
+            <p className="text-sm sm:text-base text-slate-300 font-medium max-w-lg">
               Welcome back, {user?.name || 'Foodie'}! Explore top-rated restaurants, automated driver dispatch, and dynamic surge pricing.
             </p>
+
+            {/* Active Delivery Location Bar */}
+            <div className="pt-1">
+              <button
+                type="button"
+                onClick={() => locationStore.openLocationModal()}
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 backdrop-blur-md text-xs font-semibold text-blue-100 transition cursor-pointer group"
+              >
+                <MapPin className="w-3.5 h-3.5 text-cyan-400 group-hover:scale-110 transition-transform shrink-0" />
+                <span>
+                  Delivering to: <strong className="text-white">{locationStore.village ? `${locationStore.village}, ` : ''}{locationStore.city}</strong> ({locationStore.radiusKm} km radius)
+                </span>
+                <span className="text-cyan-300 text-[11px] underline ml-1">Change Location</span>
+              </button>
+            </div>
 
             {/* Prominent Hero SearchBar */}
             <div className="pt-2 max-w-xl">
@@ -174,16 +204,19 @@ export default function CustomerHomePage() {
 
         {/* Popular Restaurants Near You */}
         <section>
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
             <div className="flex items-center gap-2">
-              <Compass className="w-5 h-5 text-orange-500" />
+              <Compass className="w-5 h-5 text-blue-600" />
               <h2 className="text-lg font-bold text-gray-900">
                 Restaurants Near You
               </h2>
+              <span className="hidden sm:inline-block px-2.5 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-[11px] font-semibold">
+                Within {locationStore.radiusKm} km of {locationStore.village || locationStore.city}
+              </span>
             </div>
             <Link
               to="/customer/restaurants"
-              className="text-xs font-bold text-orange-600 hover:text-orange-700 flex items-center gap-1 transition"
+              className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 transition"
             >
               See All <ArrowRight className="w-3.5 h-3.5" />
             </Link>
@@ -202,8 +235,34 @@ export default function CustomerHomePage() {
               onRetry={refetchRestaurants}
             />
           ) : popularRestaurants.length === 0 ? (
-            <div className="bg-white p-8 rounded-2xl border border-gray-100 text-center text-sm text-gray-500">
-              No restaurants currently active. Check back shortly!
+            <div className="bg-white p-8 sm:p-10 rounded-3xl border border-gray-100 text-center space-y-4 shadow-xs">
+              <div className="w-16 h-16 mx-auto bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center text-3xl shadow-inner">
+                📍
+              </div>
+              <div className="max-w-md mx-auto space-y-1.5">
+                <h3 className="text-base font-bold text-gray-900">
+                  No restaurants created nearby in {locationStore.village ? `${locationStore.village}, ` : ''}{locationStore.city}
+                </h3>
+                <p className="text-xs text-gray-500 leading-relaxed">
+                  We only show restaurants operating within {locationStore.radiusKm} km of your chosen location. If a restaurant is registered in this area, it will immediately appear here!
+                </p>
+              </div>
+              <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => locationStore.openLocationModal()}
+                  className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition shadow-md shadow-blue-500/20 active:scale-95"
+                >
+                  Change State / City / Village
+                </button>
+                <button
+                  type="button"
+                  onClick={() => locationStore.resetToDefault()}
+                  className="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition"
+                >
+                  Switch to Pune (Active Demo Hub)
+                </button>
+              </div>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">

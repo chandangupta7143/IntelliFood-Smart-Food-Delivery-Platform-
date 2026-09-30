@@ -11,6 +11,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.geo.Distance;
+import org.springframework.data.geo.Metrics;
 import org.springframework.data.geo.Point;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
@@ -230,9 +232,11 @@ public class RestaurantService {
             criteria.and("averageDeliveryTimeMinutes").lte(request.getMaxDeliveryTime());
         }
 
+        double maxRadiusKm = (request.getRadiusKm() != null && request.getRadiusKm() > 0) ? request.getRadiusKm() : 10.0;
+
         NearQuery nearQuery = NearQuery.near(new Point(request.getLongitude(), request.getLatitude()))
                 .spherical(true)
-                .maxDistance(request.getRadiusKm() * 1000.0)
+                .maxDistance(new Distance(maxRadiusKm, Metrics.KILOMETERS))
                 .query(Query.query(criteria));
         GeoNearOperation geoNear = Aggregation.geoNear(nearQuery, "distance");
 
@@ -244,11 +248,29 @@ public class RestaurantService {
 
         AggregationResults<Restaurant> results = mongoTemplate.aggregate(agg, "restaurants", Restaurant.class);
         List<RestaurantResponse> content = results.getMappedResults().stream()
-                .map(mapper::toResponse).collect(Collectors.toList());
+                .filter(r -> {
+                    if (r.getLocation() == null) return false;
+                    double dist = calculateHaversineDistance(
+                            request.getLatitude(), request.getLongitude(),
+                            r.getLocation().getY(), r.getLocation().getX()
+                    );
+                    return dist <= maxRadiusKm;
+                })
+                .map(mapper::toResponse)
+                .collect(Collectors.toList());
 
-        // Note: MongoDB $geoNear in aggregation doesn't provide total elements easily without a facet.
-        // Returning simple pagination fields.
         return new PaginatedResponse<>(content, request.getPage(), request.getSize(), content.size(), 1);
+    }
+
+    private double calculateHaversineDistance(double lat1, double lon1, double lat2, double lon2) {
+        final int R = 6371; // Earth radius in km
+        double latDistance = Math.toRadians(lat2 - lat1);
+        double lonDistance = Math.toRadians(lon2 - lon1);
+        double a = Math.sin(latDistance / 2) * Math.sin(latDistance / 2)
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                * Math.sin(lonDistance / 2) * Math.sin(lonDistance / 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
     }
 
     private Restaurant findRestaurantOrThrow(String id) {

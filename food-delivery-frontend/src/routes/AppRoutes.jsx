@@ -21,6 +21,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 
 import RequireAuth from './RequireAuth';
 import RequireRole from './RequireRole';
+import RootRedirect from './RootRedirect';
 
 // ── Auth pages ────────────────────────────────────────────────────────────
 import LoginPage from '../pages/auth/LoginPage';
@@ -63,15 +64,11 @@ import AdminPricingPage from '../pages/admin/AdminPricingPage';
 import AdminNotificationsPage from '../pages/admin/AdminNotificationsPage';
 import AdminSystemPage from '../pages/admin/AdminSystemPage';
 
-// ── Public Homepage ──────────────────────────────────────────────────────
-import HomePage from '../pages/HomePage';
-
 export default function AppRoutes() {
   return (
     <Routes>
       {/* ── Public routes ─────────────────────────────────────────────── */}
-      <Route path="/" element={<HomePage />} />
-      <Route path="/home" element={<HomePage />} />
+      <Route path="/" element={<RootRedirect />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/register/restaurant-owner" element={<RestaurantRegisterPage />} />

@@ -18,10 +18,13 @@ import useNotificationStore from '../store/notificationStore';
 import SearchBar from '../components/customer/SearchBar';
 import HealthBadge from '../components/HealthBadge';
 import BrandLogo from '../components/common/BrandLogo';
+import LocationModal from '../components/common/LocationModal';
+import useLocationStore from '../store/locationStore';
 import { connect, subscribeToNotifications } from '../websocket/stompClient';
 import { markAllAsRead, getNotifications } from '../api/notificationApi';
 
 export default function CustomerLayout({ children }) {
+  const locationStore = useLocationStore();
   const { user, token, logout } = useAuthStore();
   const itemCount = useCartStore((s) => s.getItemCount());
   const {
@@ -120,13 +123,19 @@ export default function CustomerLayout({ children }) {
             <div className="flex items-center gap-4 sm:gap-6 shrink-0">
               <BrandLogo to="/customer" size="sm" />
 
-              {/* Location display */}
-              <div className="hidden lg:flex items-center gap-1.5 text-xs text-gray-600 bg-gray-50 border border-gray-100 px-3 py-1.5 rounded-xl">
-                <MapPin className="w-3.5 h-3.5 text-orange-500 shrink-0" />
-                <span className="font-semibold text-gray-800">Pune</span>
-                <span className="text-gray-400">|</span>
-                <span className="text-gray-500 truncate max-w-[120px]">Shivajinagar</span>
-              </div>
+              {/* Interactive Location Picker Button */}
+              <button
+                type="button"
+                onClick={() => locationStore.openLocationModal()}
+                className="flex items-center gap-1.5 text-xs text-gray-700 bg-gray-50 hover:bg-blue-50 border border-gray-200 hover:border-blue-300 px-3 py-1.5 rounded-xl transition cursor-pointer group shadow-2xs"
+                title="Click to change State, City or Village"
+              >
+                <MapPin className="w-3.5 h-3.5 text-blue-600 group-hover:scale-110 transition-transform shrink-0" />
+                <span className="font-bold text-gray-900">{locationStore.city}</span>
+                <span className="text-gray-300">|</span>
+                <span className="text-gray-600 truncate max-w-[100px] sm:max-w-[130px]">{locationStore.village}</span>
+                <ChevronDown className="w-3 h-3 text-gray-400 group-hover:text-blue-600 transition shrink-0" />
+              </button>
             </div>
 
             {/* Global SearchBar in Navbar (hidden on small mobile, accessible via bottom nav) */}
@@ -353,6 +362,12 @@ export default function CustomerLayout({ children }) {
           )}
         </Link>
       </nav>
+
+      {/* Location Selection Modal */}
+      <LocationModal
+        isOpen={locationStore.isLocationModalOpen}
+        onClose={locationStore.closeLocationModal}
+      />
     </div>
   );
 }

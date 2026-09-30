@@ -30,7 +30,7 @@ export default function BrandLogo({
     <div className={`inline-flex items-center gap-2.5 select-none group transition-transform ${className}`}>
       <div className="relative shrink-0 flex items-center justify-center">
         {/* Ambient Glow */}
-        <div className="absolute inset-0 bg-gradient-to-tr from-cyan-500 via-emerald-500 to-orange-500 rounded-2xl blur-xs opacity-40 group-hover:opacity-80 transition duration-300" />
+        <div className="absolute inset-0 bg-gradient-to-tr from-cyan-500 via-blue-600 to-indigo-600 rounded-2xl blur-xs opacity-40 group-hover:opacity-80 transition duration-300" />
         <img
           src="/brand-logo.png"
           alt="IntelliFood Logo"
@@ -46,7 +46,7 @@ export default function BrandLogo({
         <div className="flex flex-col leading-tight">
           <div className={`font-black tracking-tight text-gray-900 ${currentSize.text} flex items-center`}>
             <span>Intelli</span>
-            <span className="bg-gradient-to-r from-orange-500 via-amber-500 to-emerald-500 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 bg-clip-text text-transparent">
               Food
             </span>
           </div>

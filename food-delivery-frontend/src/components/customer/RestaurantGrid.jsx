@@ -11,6 +11,7 @@ export default function RestaurantGrid({
   onRetry = null,
   emptyTitle = 'No restaurants found',
   emptyMessage = 'Try adjusting your search criteria or filters to find available restaurants.',
+  emptyAction = null,
   onRecommendationClick = null,
   className = '',
 }) {
@@ -40,6 +41,7 @@ export default function RestaurantGrid({
         icon="🍽️"
         title={emptyTitle}
         description={emptyMessage}
+        action={emptyAction}
       />
     );
   }

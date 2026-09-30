@@ -19,10 +19,16 @@ export async function getRestaurants(params = {}) {
   return res.data.data;
 }
 
-/** Get nearby restaurants using H3 geo-index.
- * @param {{ lat: number, lng: number, radiusKm?: number }} params */
-export async function getNearbyRestaurants(params) {
-  const res = await axiosClient.get('/api/restaurants/nearby', { params });
+/** Get nearby restaurants within a given radius (km).
+ * @param {{ latitude?: number, longitude?: number, lat?: number, lng?: number, radiusKm?: number, cuisine?: string, minRating?: number, priceRange?: number, vegetarianOnly?: boolean, maxDeliveryTime?: number, sortBy?: string, page?: number, size?: number }} params */
+export async function getNearbyRestaurants(params = {}) {
+  const queryParams = {
+    ...params,
+    latitude: params.latitude !== undefined ? params.latitude : params.lat,
+    longitude: params.longitude !== undefined ? params.longitude : params.lng,
+    radiusKm: params.radiusKm !== undefined ? params.radiusKm : 10,
+  };
+  const res = await axiosClient.get('/api/restaurants/nearby', { params: queryParams });
   return res.data.data;
 }
 

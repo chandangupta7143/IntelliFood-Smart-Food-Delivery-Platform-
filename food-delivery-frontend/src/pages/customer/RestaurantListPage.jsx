@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Filter, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { Filter, ChevronLeft, ChevronRight, X, MapPin } from 'lucide-react';
 import CustomerLayout from '../../layouts/CustomerLayout';
 import FilterPanel from '../../components/customer/FilterPanel';
 import RestaurantGrid from '../../components/customer/RestaurantGrid';
-import { getRestaurants } from '../../api/restaurantApi';
+import { getNearbyRestaurants } from '../../api/restaurantApi';
+import useLocationStore from '../../store/locationStore';
 import Modal from '../../components/common/Modal';
 
 export default function RestaurantListPage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const locationStore = useLocationStore();
 
   // Read initial filter state from URL
   const initialCuisine = searchParams.get('cuisine') || '';
@@ -61,10 +63,13 @@ export default function RestaurantListPage() {
     setShowMobileFilters(false);
   };
 
-  // Build clean backend query object
+  // Build clean backend query object with strict location coordinates
   const queryParams = {
     page,
     size: 12,
+    latitude: locationStore.latitude,
+    longitude: locationStore.longitude,
+    radiusKm: locationStore.radiusKm,
     ...(filters.cuisine && { cuisine: filters.cuisine }),
     ...(filters.vegetarianOnly && { vegetarianOnly: true }),
     ...(filters.minRating > 0 && { minRating: filters.minRating }),
@@ -75,7 +80,7 @@ export default function RestaurantListPage() {
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['restaurants', 'list', queryParams],
-    queryFn: () => getRestaurants(queryParams),
+    queryFn: () => getNearbyRestaurants(queryParams),
     staleTime: 2 * 60 * 1000,
   });
 
@@ -89,13 +94,27 @@ export default function RestaurantListPage() {
         {/* Title Bar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-gray-100">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-black text-gray-900">
-              Discover Restaurants
-            </h1>
-            <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
-              {totalElements > 0
-                ? `Showing ${restaurants.length} of ${totalElements} restaurants`
-                : 'Find the best meals in your area'}
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-2xl sm:text-3xl font-black text-gray-900">
+                Discover Restaurants
+              </h1>
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs font-semibold">
+                Within {locationStore.radiusKm} km of {locationStore.village || locationStore.city}
+              </span>
+            </div>
+            <p className="text-xs sm:text-sm text-gray-500 mt-1 flex flex-wrap items-center gap-2">
+              <span>
+                {totalElements > 0
+                  ? `Showing ${restaurants.length} nearby restaurants in ${locationStore.city}`
+                  : `No restaurants found nearby in ${locationStore.village ? `${locationStore.village}, ` : ''}${locationStore.city}`}
+              </span>
+              <button
+                type="button"
+                onClick={() => locationStore.openLocationModal()}
+                className="text-blue-600 hover:text-blue-800 text-xs font-bold underline cursor-pointer"
+              >
+                Change Location
+              </button>
             </p>
           </div>
 
@@ -131,8 +150,12 @@ export default function RestaurantListPage() {
               isLoading={isLoading}
               error={error}
               onRetry={refetch}
-              emptyTitle="No restaurants found"
-              emptyMessage="We couldn't find any restaurants matching your active filters. Try resetting some filters."
+              emptyTitle={`No restaurants nearby in ${locationStore.village ? `${locationStore.village}, ` : ''}${locationStore.city}`}
+              emptyMessage={`Showing only restaurants created within ${locationStore.radiusKm} km of this location. If a restaurant is registered here, it will appear automatically.`}
+              emptyAction={{
+                label: 'Change Location or Radius',
+                onClick: () => locationStore.openLocationModal(),
+              }}
             />
 
             {/* Pagination Controls */}

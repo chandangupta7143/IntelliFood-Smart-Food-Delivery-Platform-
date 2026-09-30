@@ -130,7 +130,7 @@ export default function AdminSystemPage() {
                 <div className="text-xs text-slate-400 space-y-1">
                   <div className="flex justify-between">
                     <span>Host:</span>
-                    <span className="font-mono text-slate-200">localhost:27017</span>
+                    <span className="font-mono text-slate-200">{systemStatus?.mongodbHost || 'Active Cluster'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Status:</span>
@@ -161,7 +161,7 @@ export default function AdminSystemPage() {
                 <div className="text-xs text-slate-400 space-y-1">
                   <div className="flex justify-between">
                     <span>Host:</span>
-                    <span className="font-mono text-slate-200">localhost:6379</span>
+                    <span className="font-mono text-slate-200">{systemStatus?.redisHost || 'Active Instance'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Role:</span>

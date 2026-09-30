@@ -125,7 +125,7 @@ public class OrderServiceImplTest {
         createRequest.setDeliveryLatitude(28.05);
         createRequest.setDeliveryLongitude(77.05);
         createRequest.setOrderSource(OrderSource.WEB);
-        createRequest.setPaymentMethod(PaymentMethod.CREDIT_CARD);
+        createRequest.setPaymentMethod(PaymentMethod.CASH_ON_DELIVERY);
         
         // Resolve real H3 index to match token verification
         String realH3Index = h3.latLngToCellAddress(28.05, 77.05, 8);
@@ -240,5 +240,34 @@ public class OrderServiceImplTest {
         assertEquals(OrderStatus.CANCELLED, order.getStatus());
         assertEquals(PaymentStatus.REFUNDED, order.getPaymentStatus());
         verify(orderRepository, times(1)).save(order);
+    }
+
+    @Test
+    void testCreateOrder_WithOnlinePaymentMethod_ShouldThrowIllegalArgumentException() {
+        createRequest.setPaymentMethod(PaymentMethod.UPI);
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> {
+            orderService.createOrder(createRequest, "customer@food.com", "idemp_1");
+        });
+        assertEquals("Online payments are currently unavailable. Please select Cash on Delivery.", ex.getMessage());
+
+        createRequest.setPaymentMethod(PaymentMethod.CREDIT_CARD);
+        ex = assertThrows(IllegalArgumentException.class, () -> {
+            orderService.createOrder(createRequest, "customer@food.com", "idemp_2");
+        });
+        assertEquals("Online payments are currently unavailable. Please select Cash on Delivery.", ex.getMessage());
+
+        createRequest.setPaymentMethod(PaymentMethod.DEBIT_CARD);
+        ex = assertThrows(IllegalArgumentException.class, () -> {
+            orderService.createOrder(createRequest, "customer@food.com", "idemp_3");
+        });
+        assertEquals("Online payments are currently unavailable. Please select Cash on Delivery.", ex.getMessage());
+
+        createRequest.setPaymentMethod(PaymentMethod.NET_BANKING);
+        ex = assertThrows(IllegalArgumentException.class, () -> {
+            orderService.createOrder(createRequest, "customer@food.com", "idemp_4");
+        });
+        assertEquals("Online payments are currently unavailable. Please select Cash on Delivery.", ex.getMessage());
+
+        verify(orderRepository, never()).save(any(Order.class));
     }
 }

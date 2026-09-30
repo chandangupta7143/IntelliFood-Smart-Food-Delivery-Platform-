@@ -16,18 +16,18 @@ import PricingBreakdown from '../../components/customer/PricingBreakdown';
 import Button from '../../components/common/Button';
 import useCartStore from '../../store/cartStore';
 import useAuthStore from '../../store/authStore';
+import useLocationStore from '../../store/locationStore';
 import { getPricingQuote } from '../../api/pricingApi';
 import { createOrder } from '../../api/orderApi';
 
 const PAYMENT_METHODS = [
-  { id: 'UPI', label: 'Instant UPI', desc: 'Google Pay, PhonePe, Paytm', emoji: '📱' },
-  { id: 'CASH_ON_DELIVERY', label: 'Cash on Delivery', desc: 'Pay with cash at your doorstep', emoji: '💵' },
-  { id: 'CREDIT_CARD', label: 'Credit / Debit Card', desc: 'Visa, MasterCard, RuPay (Test mode)', emoji: '💳' },
+  { id: 'CASH_ON_DELIVERY', label: 'Cash on Delivery', desc: 'Pay when your order is delivered', emoji: '💵' },
 ];
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
   const { user } = useAuthStore();
+  const locationStore = useLocationStore();
   const {
     items,
     restaurantId,
@@ -42,13 +42,13 @@ export default function CheckoutPage() {
     return <Navigate to="/customer/cart" replace />;
   }
 
-  // Delivery details state
+  // Delivery details state initialized from user's active selected location
   const [deliveryAddress, setDeliveryAddress] = useState(
-    'Flat 402, Sunshine Heights, FC Road, Shivajinagar, Pune'
+    () => `${locationStore.village ? `${locationStore.village}, ` : ''}${locationStore.city}, ${locationStore.state}`
   );
-  const [deliveryLatitude, setDeliveryLatitude] = useState(18.5204);
-  const [deliveryLongitude, setDeliveryLongitude] = useState(73.8567);
-  const [paymentMethod, setPaymentMethod] = useState('UPI');
+  const [deliveryLatitude, setDeliveryLatitude] = useState(() => locationStore.latitude || 18.5204);
+  const [deliveryLongitude, setDeliveryLongitude] = useState(() => locationStore.longitude || 73.8567);
+  const [paymentMethod, setPaymentMethod] = useState('CASH_ON_DELIVERY');
 
   // Surge Quote state
   const [quote, setQuote] = useState(null);
